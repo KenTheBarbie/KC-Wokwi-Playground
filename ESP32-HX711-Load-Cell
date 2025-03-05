@@ -1,0 +1,71 @@
+
+# Kendall Cooney, 2025
+# Micropython ESP32
+# HX711 load cell integration
+# https://wokwi.com/projects/424612035383741441
+
+# Uses SPI driver from Github:
+# https://github.com/robert-hh/hx711/blob/master/hx711_spi.py
+# Library code is stored in separate .py file within
+# this project.
+
+# Start by importing libraries and defining pinout
+# https://www.upesy.com/cdn/shop/files/doc-esp32-pinout-reference-wroom-devkit.png
+
+import machine
+import time
+import hx711_SPI_driver as hxDriver
+print("Libraries installed!")
+
+# GPIO 14 is SD_CLK, GPIO 12 is SD_DAT2
+# Default SPI pins preassigned... See
+# https://randomnerdtutorials.com/esp32-spi-communication-arduino/
+# SPI2 = HSPI
+# MOSI: 13 | MISO: 12 | SCLK: 14
+
+mosiPinNum = 13
+misoPinNum = 12
+clkPin = 14
+buttPin = 19
+LEDpinNum = 18
+
+dbDelay = 350 # In ms
+lastDB = 0
+
+# Read weight only when buttonState TRUE
+LEDstate = True
+
+# Initializing Pin objects
+sdCLK = machine.Pin(mosiPinNum,machine.Pin.OUT)
+sdDAT = machine.Pin(misoPinNum,machine.Pin.IN)
+spiCLK = machine.Pin(clkPin,machine.Pin.IN)
+button = machine.Pin(buttPin,machine.Pin.IN)
+LED = machine.Pin(LEDpinNum,)
+
+# Defining millis
+millis = lambda: time.ticks_ms()
+
+# Defining interrupt sequence
+def bPress(pin):
+    global LEDstate, lastDB, dbDelay
+    state = machine.disable_irq()
+    time = millis()
+    if (time - lastDB > dbDelay):
+        LEDstate = not LEDstate
+    machine.enable_irq(state)
+
+
+# Attaching interrupt to button pin on FALLING
+button.irq(handler=bPress, trigger=machine.Pin.IRQ_FALLING)
+
+# Creating SPI object
+spi = machine.SPI(2,baudrate=1000000, polarity = 0,
+        phase=0, sck=spiCLK, mosi=sdCLK, miso=sdDAT)
+
+def main():
+    print(LEDstate)
+
+# This is essentially the loop function!
+while True:
+    main()
+    time.sleep_ms(50)
